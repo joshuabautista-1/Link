@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jomi's LinkVault</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f4f0; --surface: #ffffff; --border: #e2e0d8;
+    --text: #1a1916; --muted: #8c8a84; --accent: #2d2d2b;
+    --tag-bg: #eeede8; --danger: #c0392b; --radius: 10px;
+    --mono: 'DM Mono', monospace; --serif: 'DM Serif Display', serif;
+  }
+  body { font-family: var(--mono); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+  /* HEADER */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 28px 40px 20px; border-bottom: 1px solid var(--border);
+    background: var(--bg); position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: var(--serif); font-size: 22px; letter-spacing: -0.5px; }
+  .logo span { color: var(--muted); font-style: italic; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .db-badge {
+    font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    background: var(--tag-bg); color: var(--muted); border-radius: 20px;
+    padding: 4px 10px; border: 1px solid var(--border);
+  }
+  .db-badge.ready { color: #2e7d32; background: #e8f5e9; border-color: #c8e6c9; }
+  .header-actions { display: flex; gap: 8px; }
+  button { font-family: var(--mono); cursor: pointer; border: none; font-size: 13px; }
+  .btn-primary { background: var(--accent); color: #fff; padding: 9px 18px; border-radius: var(--radius); transition: opacity 0.15s; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-ghost { background: transparent; color: var(--muted); padding: 9px 14px; border-radius: var(--radius); border: 1px solid var(--border); transition: all 0.15s; }
+  .btn-ghost:hover { background: var(--surface); color: var(--text); }
+
+  /* LAYOUT */
+  .layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 73px); }
+
+  /* SIDEBAR */
+  aside { padding: 28px 20px; border-right: 1px solid var(--border); background: var(--bg); }
+  .sidebar-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; padding: 0 8px; }
+  .cat-list { list-style: none; margin-bottom: 24px; }
+  .cat-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 7px; cursor: pointer; transition: background 0.12s; gap: 8px; }
+  .cat-item:hover { background: var(--tag-bg); }
+  .cat-item.active { background: var(--accent); color: #fff; }
+  .cat-item.active .cat-count { background: rgba(255,255,255,0.2); color: #fff; }
+  .cat-item.active .cat-del { color: rgba(255,255,255,0.5); }
+  .cat-item.active .cat-del:hover { color: #fff; background: rgba(255,255,255,0.15); }
+  .cat-name { flex: 1; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat-count { font-size: 11px; background: var(--tag-bg); color: var(--muted); border-radius: 20px; padding: 1px 7px; min-width: 22px; text-align: center; }
+  .cat-del { font-size: 11px; color: var(--muted); background: transparent; border-radius: 4px; padding: 2px 5px; opacity: 0; transition: opacity 0.1s, background 0.1s; }
+  .cat-item:hover .cat-del { opacity: 1; }
+  .cat-del:hover { background: var(--border); color: var(--danger) !important; }
+  .add-cat-row { display: flex; gap: 6px; margin-top: 4px; }
+  .add-cat-input { flex: 1; font-family: var(--mono); font-size: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px; color: var(--text); outline: none; transition: border-color 0.15s; }
+  .add-cat-input:focus { border-color: var(--accent); }
+  .btn-add-cat { background: var(--tag-bg); color: var(--accent); border-radius: 7px; padding: 7px 10px; font-size: 16px; line-height: 1; transition: background 0.12s; }
+  .btn-add-cat:hover { background: var(--border); }
+
+  /* MAIN */
+  main { padding: 32px 40px; }
+  .main-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
+  .search-wrap { position: relative; flex: 1; max-width: 380px; }
+  .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; pointer-events: none; }
+  .search-input { width: 100%; font-family: var(--mono); font-size: 13px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px 9px 36px; color: var(--text); outline: none; transition: border-color 0.15s; }
+  .search-input:focus { border-color: var(--accent); }
+  .view-label { font-family: var(--serif); font-size: 20px; color: var(--text); }
+  .view-count { font-family: var(--mono); font-size: 13px; color: var(--muted); margin-left: 8px; }
+
+  /* LINK GRID */
+  .links-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .link-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; transition: box-shadow 0.15s, border-color 0.15s; position: relative; display: flex; flex-direction: column; gap: 8px; }
+  .link-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); border-color: #ccc; }
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .favicon { width: 28px; height: 28px; border-radius: 6px; background: var(--tag-bg); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; overflow: hidden; }
+  .favicon img { width: 100%; height: 100%; object-fit: contain; border-radius: 4px; }
+  .card-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+  .link-card:hover .card-actions { opacity: 1; }
+  .btn-icon { background: var(--tag-bg); color: var(--muted); border-radius: 6px; padding: 5px 7px; font-size: 12px; transition: all 0.12s; }
+  .btn-icon:hover { background: var(--border); color: var(--text); }
+  .btn-icon.del:hover { background: #fdecea; color: var(--danger); }
+  .card-title { font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.4; text-decoration: none; display: block; }
+  .card-title:hover { text-decoration: underline; }
+  .card-url { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-cat { display: inline-block; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; background: var(--tag-bg); color: var(--muted); border-radius: 4px; padding: 3px 7px; margin-top: 2px; align-self: flex-start; }
+  .card-date { font-size: 10px; color: var(--border); margin-top: 2px; }
+
+  .empty { grid-column: 1/-1; text-align: center; padding: 80px 20px; color: var(--muted); }
+  .empty-icon { font-size: 36px; margin-bottom: 12px; }
+  .empty-text { font-size: 13px; line-height: 1.7; }
+
+  /* LOADING */
+  .loading { grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--muted); font-size: 13px; }
+  .dot { display: inline-block; animation: blink 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+
+  /* MODAL */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(20,20,18,0.45); z-index: 200; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(2px); }
+  .overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 14px; padding: 32px; width: 100%; max-width: 440px; border: 1px solid var(--border); animation: modalIn 0.18s ease; }
+  @keyframes modalIn { from{opacity:0;transform:translateY(12px) scale(0.98)} to{opacity:1;transform:translateY(0) scale(1)} }
+  .modal-title { font-family: var(--serif); font-size: 20px; margin-bottom: 22px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+  .field input, .field select { width: 100%; font-family: var(--mono); font-size: 13px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); outline: none; transition: border-color 0.15s; appearance: none; }
+  .field input:focus, .field select:focus { border-color: var(--accent); background: var(--surface); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+  /* DB INFO PANEL */
+  .db-info { font-size: 11px; color: var(--muted); margin-top: 20px; padding: 12px; background: var(--tag-bg); border-radius: 8px; line-height: 1.7; }
+  .db-info strong { color: var(--text); }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--accent); color: #fff; font-family: var(--mono); font-size: 13px; padding: 10px 20px; border-radius: 30px; opacity: 0; transition: all 0.25s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 700px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { display: none; }
+    header { padding: 18px 20px; }
+    main { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Link<span>vault</span></div>
+  <div class="header-right">
+    <span class="db-badge" id="dbBadge">⏳ opening db…</span>
+    <div class="header-actions">
+      <button class="btn-ghost" onclick="exportData()" title="Export JSON">↓ Export</button>
+      <button class="btn-primary" onclick="openModal()">+ Add link</button>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <aside>
+    <p class="sidebar-label">Categories</p>
+    <ul class="cat-list" id="catList"></ul>
+    <div class="add-cat-row">
+      <input class="add-cat-input" id="newCatInput" placeholder="New category…" maxlength="30" onkeydown="if(event.key==='Enter')addCategory()">
+      <button class="btn-add-cat" onclick="addCategory()">+</button>
+    </div>
+    <div class="db-info" id="dbInfo">
+      <strong>Database</strong><br>
+      Engine: IndexedDB<br>
+      Status: <span id="dbStatus">connecting…</span>
+    </div>
+  </aside>
+
+  <main>
+    <div class="main-top">
+      <div>
+        <span class="view-label" id="viewLabel">All</span>
+        <span class="view-count" id="viewCount"></span>
+      </div>
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input class="search-input" id="searchInput" placeholder="Search links…" oninput="renderLinks()">
+      </div>
+    </div>
+    <div class="links-grid" id="linksGrid">
+      <div class="loading">Opening database<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
+    </div>
+  </main>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Add link</div>
+    <div class="field">
+      <label>Name</label>
+      <input id="fName" placeholder="e.g. Telegram Web" maxlength="80">
+    </div>
+    <div class="field">
+      <label>URL</label>
+      <input id="fUrl" placeholder="https://" type="url">
+    </div>
+    <div class="field">
+      <label>Category</label>
+      <select id="fCat"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveLink()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  IndexedDB Layer — linkvault_db v2
+//  Stores: "links"      (keyPath: id, index on cat + saved)
+//          "categories" (keyPath: name)
+// ════════════════════════════════════════════════════════════
+const DB_NAME    = 'linkvault_db';
+const DB_VERSION = 2;
+let   db         = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+
+      // links store
+      if (!d.objectStoreNames.contains('links')) {
+        const ls = d.createObjectStore('links', { keyPath: 'id' });
+        ls.createIndex('cat',   'cat',   { unique: false });
+        ls.createIndex('saved', 'saved', { unique: false });
+      }
+
+      // categories store
+      if (!d.objectStoreNames.contains('categories')) {
+        d.createObjectStore('categories', { keyPath: 'name' });
+      }
+
+      // Seed default categories on first install
+      if (e.oldVersion === 0) {
+        const tx   = e.target.transaction;
+        const cats = tx.objectStore('categories');
+        ['Work','Social','Tools','Reading'].forEach(n => cats.add({ name: n, order: n }));
+
+        const lnk = tx.objectStore('links');
+        const now  = Date.now();
+        [
+          { id: uid(), name: 'Telegram Web', url: 'https://web.telegram.org/k/', cat: 'Social', saved: now - 2000 },
+          { id: uid(), name: 'Claude AI',    url: 'https://claude.ai',           cat: 'Tools',  saved: now - 1000 },
+          { id: uid(), name: 'Hacker News',  url: 'https://news.ycombinator.com',cat: 'Reading',saved: now },
+        ].forEach(l => lnk.add(l));
+      }
+    };
+
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+// ── Generic IDB helpers ────────────────────────────────────
+function txGet(store, mode = 'readonly') {
+  return db.transaction([store], mode).objectStore(store);
+}
+
+function idbGetAll(store) {
+  return new Promise((res, rej) => {
+    const req = txGet(store).getAll();
+    req.onsuccess = () => res(req.result);
+    req.onerror   = () => rej(req.error);
+  });
+}
+
+function idbPut(store, obj) {
+  return new Promise((res, rej) => {
+    const req = txGet(store, 'readwrite').put(obj);
+    req.onsuccess = () => res(req.result);
+    req.onerror   = () => rej(req.error);
+  });
+}
+
+function idbDelete(store, key) {
+  return new Promise((res, rej) => {
+    const req = txGet(store, 'readwrite').delete(key);
+    req.onsuccess = () => res();
+    req.onerror   = () => rej(req.error);
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  App State (in-memory cache, always synced from IDB)
+// ════════════════════════════════════════════════════════════
+let categories     = [];   // [{name}]
+let links          = [];   // [{id,name,url,cat,saved}]
+let activeCategory = 'All';
+let editingId      = null;
+
+function uid() { return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2,12); }
+
+async function loadAll() {
+  [categories, links] = await Promise.all([idbGetAll('categories'), idbGetAll('links')]);
+  categories.sort((a,b) => a.name.localeCompare(b.name));
+  links.sort((a,b) => b.saved - a.saved);
+}
+
+// ── UI renderers ───────────────────────────────────────────
+function renderSidebar() {
+  const list = document.getElementById('catList');
+  const all  = ['All', ...categories.map(c => c.name)];
+  list.innerHTML = all.map(cat => {
+    const count  = cat === 'All' ? links.length : links.filter(l => l.cat === cat).length;
+    const active = cat === activeCategory ? 'active' : '';
+    const delBtn = cat !== 'All'
+      ? `<button class="cat-del" onclick="event.stopPropagation();deleteCategory('${cat}')" title="Delete category">✕</button>`
+      : '';
+    return `<li class="cat-item ${active}" onclick="setCategory('${cat}')">
+      <span class="cat-name">${cat}</span>
+      <span class="cat-count">${count}</span>
+      ${delBtn}
+    </li>`;
+  }).join('');
+
+  // update db info
+  document.getElementById('dbStatus').textContent = `ready · ${links.length} links`;
+}
+
+function renderLinks() {
+  const q    = document.getElementById('searchInput').value.toLowerCase();
+  let   view = activeCategory === 'All' ? links : links.filter(l => l.cat === activeCategory);
+  if (q) view = view.filter(l => l.name.toLowerCase().includes(q) || l.url.toLowerCase().includes(q));
+
+  document.getElementById('viewCount').textContent = `— ${view.length}`;
+
+  const grid = document.getElementById('linksGrid');
+  if (!view.length) {
+    grid.innerHTML = `<div class="empty">
+      <div class="empty-icon">◯</div>
+      <div class="empty-text">${q ? `No results for "${q}"` : 'No links here yet.<br>Add one with the button above.'}</div>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = view.map(l => {
+    const domain     = (() => { try { return new URL(l.url).hostname; } catch(e) { return ''; } })();
+    const faviconUrl = domain ? `https://www.google.com/s2/favicons?sz=32&domain=${domain}` : '';
+    const dateStr    = new Date(l.saved).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+    return `<div class="link-card">
+      <div class="card-top">
+        <div class="favicon">
+          ${faviconUrl ? `<img src="${faviconUrl}" onerror="this.parentElement.textContent='🔗'">` : '🔗'}
+        </div>
+        <div class="card-actions">
+          <button class="btn-icon" onclick="openEdit('${l.id}')" title="Edit">✎</button>
+          <button class="btn-icon del" onclick="deleteLink('${l.id}')" title="Delete">✕</button>
+        </div>
+      </div>
+      <a class="card-title" href="${l.url}" target="_blank" rel="noopener">${escHtml(l.name)}</a>
+      <div class="card-url">${escHtml(domain || l.url)}</div>
+      ${l.cat ? `<span class="card-cat">${escHtml(l.cat)}</span>` : ''}
+      <div class="card-date">${dateStr}</div>
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function setCategory(cat) {
+  activeCategory = cat;
+  document.getElementById('viewLabel').textContent = cat;
+  renderSidebar();
+  renderLinks();
+}
+
+// ── Categories ─────────────────────────────────────────────
+async function addCategory() {
+  const input = document.getElementById('newCatInput');
+  const name  = input.value.trim();
+  if (!name || categories.some(c => c.name === name)) return;
+  await idbPut('categories', { name });
+  categories.push({ name });
+  categories.sort((a,b) => a.name.localeCompare(b.name));
+  input.value = '';
+  renderSidebar();
+  populateCatSelect();
+  toast('Category added');
+}
+
+async function deleteCategory(name) {
+  if (!confirm(`Delete category "${name}"? Links in this category will become uncategorised.`)) return;
+  await idbDelete('categories', name);
+  // uncategorise affected links
+  const affected = links.filter(l => l.cat === name);
+  for (const l of affected) { l.cat = ''; await idbPut('links', l); }
+  categories = categories.filter(c => c.name !== name);
+  if (activeCategory === name) activeCategory = 'All';
+  document.getElementById('viewLabel').textContent = activeCategory;
+  renderSidebar();
+  renderLinks();
+  toast('Category deleted');
+}
+
+// ── Links ──────────────────────────────────────────────────
+async function deleteLink(id) {
+  await idbDelete('links', id);
+  links = links.filter(l => l.id !== id);
+  renderSidebar();
+  renderLinks();
+  toast('Link removed');
+}
+
+// ── Modal ──────────────────────────────────────────────────
+function populateCatSelect(selected) {
+  const sel = document.getElementById('fCat');
+  sel.innerHTML = categories.map(c =>
+    `<option value="${c.name}" ${c.name === selected ? 'selected' : ''}>${escHtml(c.name)}</option>`
+  ).join('');
+}
+
+function openModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Add link';
+  document.getElementById('fName').value = '';
+  document.getElementById('fUrl').value  = '';
+  populateCatSelect(activeCategory !== 'All' ? activeCategory : (categories[0]?.name || ''));
+  document.getElementById('overlay').classList.add('open');
+  setTimeout(() => document.getElementById('fUrl').focus(), 50);
+}
+
+function openEdit(id) {
+  const link = links.find(l => l.id === id);
+  if (!link) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'Edit link';
+  document.getElementById('fName').value = link.name;
+  document.getElementById('fUrl').value  = link.url;
+  populateCatSelect(link.cat);
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('open');
+  editingId = null;
+}
+
+async function saveLink() {
+  const name = document.getElementById('fName').value.trim();
+  let   url  = document.getElementById('fUrl').value.trim();
+  const cat  = document.getElementById('fCat').value;
+  if (!url) { document.getElementById('fUrl').focus(); return; }
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  const displayName = name || (() => { try { return new URL(url).hostname; } catch(e) { return url; } })();
+
+  if (editingId) {
+    const existing = links.find(l => l.id === editingId);
+    if (existing) {
+      existing.name = displayName; existing.url = url; existing.cat = cat;
+      await idbPut('links', existing);
+    }
+    toast('Link updated');
+  } else {
+    const newLink = { id: uid(), name: displayName, url, cat, saved: Date.now() };
+    await idbPut('links', newLink);
+    links.unshift(newLink);
+  }
+  closeModal();
+  renderSidebar();
+  renderLinks();
+  toast(editingId ? 'Link updated' : 'Link saved');
+}
+
+// ── Export ─────────────────────────────────────────────────
+async function exportData() {
+  const data = { exported: new Date().toISOString(), categories: categories.map(c=>c.name), links };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `linkvault-export-${Date.now()}.json`;
+  a.click();
+  toast('Exported!');
+}
+
+// ── Toast ──────────────────────────────────────────────────
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ── Keyboard ───────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openModal(); }
+});
+
+// ── Boot ───────────────────────────────────────────────────
+(async () => {
+  try {
+    await openDB();
+    await loadAll();
+
+    const badge = document.getElementById('dbBadge');
+    badge.textContent = '✦ IndexedDB';
+    badge.classList.add('ready');
+    document.getElementById('dbStatus').textContent = `ready · ${links.length} links`;
+
+    renderSidebar();
+    renderLinks();
+  } catch (err) {
+    document.getElementById('linksGrid').innerHTML =
+      `<div class="empty"><div class="empty-icon">⚠</div><div class="empty-text">Could not open database.<br>${err.message}</div></div>`;
+    console.error('IDB error:', err);
+  }
+})();
+</script>
+</body>
+</html>
